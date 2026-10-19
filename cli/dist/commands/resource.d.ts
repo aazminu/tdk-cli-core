@@ -143,4 +143,14 @@ export declare const TSCONFIG_TEMPLATE: {
 export { getBackendIndexTemplate, getDrizzleBackendIndexTemplate };
 /** Resource types `tdk resource --type` accepts; `byo` is an alias of `bring-your-own`. */
 export declare function parseResourceType(type: string): CreatableResourceType | "sdk";
+type ExistingServiceConfig = {
+    [key: string]: unknown;
+    $schema?: string;
+    schemaVersion?: number;
+    appName?: string;
+    appType?: string;
+    stack?: string;
+    port?: number;
+};
+export declare function parseExistingServiceJson(content: string, configPath: string): ExistingServiceConfig;
 export declare const resourceCommand: Command;

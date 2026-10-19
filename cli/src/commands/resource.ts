@@ -433,6 +433,28 @@ export function parseResourceType(type: string): CreatableResourceType | "sdk" {
   return normalized as CreatableResourceType | "sdk";
 }
 
+type ExistingServiceConfig = {
+  [key: string]: unknown;
+  $schema?: string;
+  schemaVersion?: number;
+  appName?: string;
+  appType?: string;
+  stack?: string;
+  port?: number;
+};
+
+export function parseExistingServiceJson(
+  content: string,
+  configPath: string,
+): ExistingServiceConfig {
+  try {
+    return JSON.parse(content) as ExistingServiceConfig;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new TdkError(`Could not parse service.json at ${configPath}: ${reason}`);
+  }
+}
+
 export const resourceCommand = new Command("resource")
   .description("Create a new resource (service) from scratch, or register an existing one")
   .argument("[name]", "Resource name (kebab-case)")
@@ -776,7 +798,10 @@ export const resourceCommand = new Command("resource")
         const { readFileSync } = await import("node:fs");
         const existingServiceJsonPath = resolve(fullPath, SERVICE_JSON);
         const existingContent = readFileSync(existingServiceJsonPath, "utf-8");
-        const existingServiceJson = JSON.parse(existingContent);
+        const existingServiceJson = parseExistingServiceJson(
+          existingContent,
+          existingServiceJsonPath,
+        );
 
         // Update with new values while preserving existing fields
         const updatedServiceJson = {

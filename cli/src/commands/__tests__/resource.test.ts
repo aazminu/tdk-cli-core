@@ -20,6 +20,7 @@ import {
   getWorkerIndexTemplate,
   PRISMA_CONFIG_TEMPLATE,
   PRISMA_SCHEMA_TEMPLATE,
+  parseExistingServiceJson,
   parseResourceType,
   TSCONFIG_TEMPLATE,
   TYPE_SPECIFIC,
@@ -926,6 +927,40 @@ describe("resource command non-interactive mode", () => {
       expect(existsSync(join(projectRoot, "services", "beta", "new-api", "service.json"))).toBe(
         false,
       );
+    } finally {
+      rmSync(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("wraps a malformed service.json in a TdkError naming the file during registration", () => {
+    expect(() =>
+      parseExistingServiceJson('{"appName": "broken",', "/tmp/services/main/broken/service.json"),
+    ).toThrow(TdkError);
+    expect(() =>
+      parseExistingServiceJson('{"appName": "broken",', "/tmp/services/main/broken/service.json"),
+    ).toThrow(/Could not parse service\.json at \/tmp\/services\/main\/broken\/service\.json:/);
+
+    const projectRoot = createResourceProject();
+    try {
+      const resourceDir = join(projectRoot, "services", "main", "broken");
+      const manifestPath = join(resourceDir, "service.json");
+      mkdirSync(resourceDir, { recursive: true });
+      writeFileSync(manifestPath, '{"appName": "broken",\n');
+
+      const result = runResourceCli(projectRoot, [
+        "broken",
+        "--type",
+        "backend",
+        "--path",
+        "services/main/broken",
+        "--register-existing",
+        "--yes",
+      ]);
+      const output = result.stdout + result.stderr;
+
+      expect(result.status).toBe(1);
+      expect(output).toContain(`Could not parse service.json at ${manifestPath}:`);
+      expect(readFileSync(manifestPath, "utf8")).toBe('{"appName": "broken",\n');
     } finally {
       rmSync(projectRoot, { recursive: true, force: true });
     }
