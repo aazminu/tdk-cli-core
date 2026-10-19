@@ -43,6 +43,7 @@ import {
   PORT_RANGES,
   SERVICE_JSON,
 } from "../utils/constants.js";
+import { clearDiscoveryCache } from "../utils/discovery-context.js";
 import {
   chooseResourcePath,
   isPathDiscovered,
@@ -817,6 +818,7 @@ export const resourceCommand = new Command("resource")
         // Write updated service.json
         const { writeFileSync } = await import("node:fs");
         writeFileSync(existingServiceJsonPath, JSON.stringify(updatedServiceJson, null, 2));
+        clearDiscoveryCache();
 
         console.log(chalk.green("\n✅ Existing resource registered successfully!"));
         console.log(chalk.gray(`\nLocation: ${fullPath}`));
@@ -893,6 +895,8 @@ This file contains the resource configuration for TDK.
 `;
         const agentsPath = resolve(fullPath, "AGENTS.md");
         if (!existsSync(agentsPath)) writeFileSync(agentsPath, agentsMdContent);
+
+        clearDiscoveryCache();
 
         console.log(chalk.green("\n✅ Bring-your-own resource created successfully!"));
         console.log(chalk.gray(`\nLocation: ${fullPath}`));
@@ -1180,6 +1184,7 @@ This file contains the resource configuration for TDK.
         ]);
       }
 
+      clearDiscoveryCache();
       console.log(chalk.green("\n✅ Resource created successfully!"));
       console.log(chalk.gray(`\nLocation: ${fullPath}`));
 
