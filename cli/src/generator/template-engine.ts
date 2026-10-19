@@ -18,7 +18,6 @@ import {
   TECH_STACK_FILE,
   TILTIGNORE_FILE,
 } from "../utils/constants.js";
-import { TdkError } from "../utils/errors.js";
 import { writeTextFile } from "../utils/file-helpers.js";
 import { assertTdkGeneratedPath } from "../utils/generated-paths.js";
 import { DEFAULT_ALWAYS_ENABLED_INFRA } from "../utils/project-config-defaults.js";
@@ -463,7 +462,7 @@ export function readProjectConfig(projectRoot: string): ProjectConfig {
     parsed = JSON.parse(jsonContent);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    throw new TdkError(`Could not parse project.json at ${projectJsonPath}: ${reason}`);
+    throw new Error(`Could not parse project.json at ${projectJsonPath}: ${reason}`);
   }
 
   const projectConfig = normalizeProjectConfig(parsed);

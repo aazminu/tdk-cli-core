@@ -7,7 +7,6 @@ import { fileURLToPath } from "node:url";
 import Handlebars from "handlebars";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ProjectConfig } from "../../types/index.js";
-import { TdkError } from "../../utils/errors.js";
 import {
   generateDatabaseManagementCompose,
   generateMasterConfigs,
@@ -583,7 +582,7 @@ describe("template-engine", () => {
   });
 
   describe("readProjectConfig", () => {
-    it("throws a TdkError with the file path and parse reason when .tdk/project.json is malformed (#1521)", () => {
+    it("throws an Error with the file path and parse reason when .tdk/project.json is malformed (#1521)", () => {
       const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "tdk-malformed-project-json-"));
       try {
         const tdkDir = path.join(projectRoot, ".tdk");
@@ -606,7 +605,7 @@ describe("template-engine", () => {
           caught = error;
         }
 
-        expect(caught).toBeInstanceOf(TdkError);
+        expect(caught).toBeInstanceOf(Error);
         expect((caught as Error).message).toBe(
           `Could not parse project.json at ${projectJsonPath}: ${expectedReason}`,
         );
@@ -615,7 +614,7 @@ describe("template-engine", () => {
       }
     });
 
-    it("throws a TdkError with the file path and read error reason when .tdk/project.json cannot be read as a file (#1521)", () => {
+    it("throws an Error with the file path and read error reason when .tdk/project.json cannot be read as a file (#1521)", () => {
       const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "tdk-unreadable-project-json-"));
       try {
         const projectJsonPath = path.join(projectRoot, ".tdk", "project.json");
@@ -628,7 +627,7 @@ describe("template-engine", () => {
           caught = error;
         }
 
-        expect(caught).toBeInstanceOf(TdkError);
+        expect(caught).toBeInstanceOf(Error);
         expect((caught as Error).message).toContain(
           `Could not parse project.json at ${projectJsonPath}:`,
         );
