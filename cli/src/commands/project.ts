@@ -9,6 +9,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { generateMasterConfigs, readProjectConfig } from "../generator/template-engine.js";
 import type { DiscoveredResource, ProjectConfig } from "../types/index.js";
+import { addYesOption } from "../utils/command-helpers.js";
 import { MASTER_CONFIG_FILES, PROJECT_JSON } from "../utils/constants.js";
 import { clearDiscoveryCache } from "../utils/discovery-context.js";
 import { completeEnvFile, ensureEnvFile, validateEnvFile } from "../utils/env-validator.js";
@@ -108,7 +109,11 @@ function getDefaultCoreServices(): string[] {
     .map((f) => f.name);
 }
 
-async function cloneProjectTemplate(templateName: string, targetDir?: string): Promise<void> {
+async function cloneProjectTemplate(
+  templateName: string,
+  targetDir: string | undefined,
+  runtimeNextSteps: string[],
+): Promise<void> {
   const template = PROJECT_TEMPLATES[templateName];
 
   if (!template) {
@@ -173,6 +178,8 @@ async function cloneProjectTemplate(templateName: string, targetDir?: string): P
   showDetail(`1. cd ${dirName}`);
   showDetail("2. tdk doctor   # check Docker/Tilt are ready");
   showDetail("3. tdk up       # start the stack");
+  showDetail("\nRuntime readiness:", 0);
+  for (const line of runtimeNextSteps) showDetail(line, 0);
 }
 
 const DEFAULT_PROJECT_JSON: ProjectConfig = {
@@ -219,7 +226,7 @@ const DEFAULT_PROJECT_JSON: ProjectConfig = {
   overrides: {},
 };
 
-export const projectCommand = new Command("project")
+export const projectCommand = addYesOption(new Command("project"))
   .description("Initialize or validate project-level master configuration")
   .argument(
     "[template]",
@@ -231,13 +238,16 @@ export const projectCommand = new Command("project")
   )
   .option("--check", "Check if master configs exist and are in sync")
   .option("--force", "Overwrite existing configuration (dangerous)")
-  .option("--yes", "Non-interactive mode (use defaults)")
   .option("--config-file <path>", "Load project config from existing JSON file")
   .action(async (template, options) => {
-    const { assertMachineReadyOrExit } = await import("../utils/cold-preflight.js");
-    await assertMachineReadyOrExit();
+    const { assertMachineReadyOrExit, detectRuntimePrerequisites, formatRuntimeNextSteps } =
+      await import("../utils/cold-preflight.js");
+    // Project setup only writes files: it must not need a running Docker daemon
+    // or an installed Tilt. The runtime is checked on `tdk up`.
+    await assertMachineReadyOrExit({ scope: "scaffold" });
+    const runtimeNextSteps = formatRuntimeNextSteps(detectRuntimePrerequisites());
     if (template) {
-      await runCommand(async () => cloneProjectTemplate(template, options.path));
+      await runCommand(async () => cloneProjectTemplate(template, options.path, runtimeNextSteps));
       return;
     }
 
@@ -329,10 +339,12 @@ export const projectCommand = new Command("project")
         for (const file of MASTER_CONFIG_FILES) {
           showDetail(`- ${file}`);
         }
+        showDetail("\nRuntime readiness:", 0);
+        for (const line of runtimeNextSteps) showDetail(line, 0);
         return;
       }
 
-      if (projectJsonExists && options.force) {
+      if (projectJsonExists && options.force && !options.yes) {
         console.log(chalk.red("\n⚠️  WARNING: --force will overwrite .tdk/project.json!"));
         const confirm = await promptConfirm({
           message: "This will reset your project configuration. Continue?",
@@ -508,6 +520,8 @@ export const projectCommand = new Command("project")
       showDetail("\nNext steps:", 0);
       showDetail("1. tdk resource api --type backend --stack app   # scaffold a service");
       showDetail("2. tdk up app                                     # start it");
+      showDetail("\nRuntime readiness:", 0);
+      for (const line of runtimeNextSteps) showDetail(line, 0);
       showDetail("\nAfter editing .tdk/project.json, run `tdk config regenerate`.", 0);
     });
   });
