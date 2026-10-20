@@ -367,17 +367,28 @@ export class ProjectConfigNotFoundError extends Error {
 /**
  * Reads, parses, and normalizes `.tdk/project.json` from the given project root.
  *
+ * The file is read directly instead of being existence-checked first: `fs.existsSync` swallows
+ * filesystem errors and reports an inaccessible config as missing, which hides the real reason.
+ * Only a missing file (`ENOENT`) means "not found"; every other read failure keeps its reason.
+ *
  * @param projectRoot - Root directory of the TDK project.
  * @returns The validated and normalized {@link ProjectConfig}.
  */
 export function readProjectConfig(projectRoot) {
     const projectJsonPath = path.join(projectRoot, ".tdk", PROJECT_JSON);
-    if (!fs.existsSync(projectJsonPath)) {
-        throw new ProjectConfigNotFoundError(`Project config not found: ${projectJsonPath}. Run 'tdk project --yes' first.`);
+    let jsonContent;
+    try {
+        jsonContent = fs.readFileSync(projectJsonPath, "utf-8");
+    }
+    catch (error) {
+        if (error?.code === "ENOENT") {
+            throw new ProjectConfigNotFoundError(`Project config not found: ${projectJsonPath}. Run 'tdk project --yes' first.`);
+        }
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(`Could not read project.json at ${projectJsonPath}: ${reason}`);
     }
     let parsed;
     try {
-        const jsonContent = fs.readFileSync(projectJsonPath, "utf-8");
         parsed = JSON.parse(jsonContent);
     }
     catch (error) {
