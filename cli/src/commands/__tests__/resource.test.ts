@@ -1,7 +1,15 @@
 // Copyright (c) 2026 TDK Landscape contributors
 // SPDX-License-Identifier: MIT
 import { execSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -959,7 +967,10 @@ describe("resource command non-interactive mode", () => {
       const output = result.stdout + result.stderr;
 
       expect(result.status).toBe(1);
-      expect(output).toContain(`Could not parse service.json at ${manifestPath}:`);
+      // The CLI reports the manifest path it actually read, which is the resolved
+      // (symlink-free) path: on macOS the temporary directory is `/var/...` but the
+      // spawned process sees `/private/var/...`.
+      expect(output).toContain(`Could not parse service.json at ${realpathSync(manifestPath)}:`);
       expect(readFileSync(manifestPath, "utf8")).toBe('{"appName": "broken",\n');
     } finally {
       rmSync(projectRoot, { recursive: true, force: true });
